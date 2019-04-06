@@ -40,7 +40,7 @@ import com.day.cq.dam.api.AssetManager;
  *         This scheduler watches the specified directory and updates the assets
  */
 @Component(service = Runnable.class, immediate = true)
-@Designate(ocd = AutoFileUploaderConfiguration.class)
+@Designate(ocd = AutoFileUploaderConfiguration.class, factory = true)
 public class AutoFileUploader implements Runnable {
 
 	// Logger
