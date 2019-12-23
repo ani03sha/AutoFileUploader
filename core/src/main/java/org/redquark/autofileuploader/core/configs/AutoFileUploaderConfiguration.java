@@ -7,10 +7,14 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 /**
  * @author Anirudh Sharma
  * 
- * This interface defines the configuration for the watched folder scheduler
+ *         This interface defines the configuration for the watched folder
+ *         scheduler
  */
 @ObjectClassDefinition(name = "Red Quark Auto File Uploader Configuration", description = "Configure for file upload options")
 public @interface AutoFileUploaderConfiguration {
+
+	@AttributeDefinition(name = "Scheduler Name", description = "Enter the name of the Scheduler", type = AttributeType.STRING)
+	public String schedulerName() default "Auto File Uploader Scheduler";
 
 	@AttributeDefinition(name = "Watcher Directory Path", description = "Enter the path of the directory to watched for", type = AttributeType.STRING)
 	public String watchedDirectoryPath();

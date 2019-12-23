@@ -16,7 +16,6 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -48,8 +47,8 @@ public class AutoFileUploader implements Runnable {
 
 	// Instance of the OSGi configuration
 	private AutoFileUploaderConfiguration autoFileUploaderConfiguration;
-
-	// Defines the service API to get andcreate ResourceResolvers.
+	
+	// Defines the service API to get and create ResourceResolvers.
 	@Reference
 	private ResourceResolverFactory resourceResolverFactory;
 
@@ -57,9 +56,8 @@ public class AutoFileUploader implements Runnable {
 	// executed/fired by the scheduler
 	@Reference
 	private Scheduler scheduler;
-
-	// Scheduler Id to add/remove scheduler on modifications
-	private String schedulerId;
+	
+	private ResourceResolver resourceResolver;
 
 	/**
 	 * Initialize stuff
@@ -74,9 +72,10 @@ public class AutoFileUploader implements Runnable {
 		// Getting the instance of FileUploaderConfiguration
 		this.autoFileUploaderConfiguration = autoFileUploaderConfiguration;
 
-		// Creating the scheduler id - this will be needed for scheduling and
-		// unscheduling whenever the configuration is modified
-		schedulerId = UUID.randomUUID().toString();
+		autoFileUploaderConfiguration.schedulerName();
+		
+		// Getting the reference of ResourceResolver
+		resourceResolver = getResourceResolver();
 	}
 
 	/**
@@ -88,13 +87,10 @@ public class AutoFileUploader implements Runnable {
 	protected void modified(AutoFileUploaderConfiguration autoFileUploaderConfiguration) {
 
 		// Removing the scheduler
-		removeScheduler();
-
-		// Modify the schedulerId - Update
-		schedulerId = UUID.randomUUID().toString();
-
+		removeScheduler(autoFileUploaderConfiguration);
+		
 		// Adding the scheduler again with updated id
-		addScheduler();
+		addScheduler(autoFileUploaderConfiguration);
 	}
 
 	/**
@@ -106,7 +102,7 @@ public class AutoFileUploader implements Runnable {
 	protected void deactivate(AutoFileUploaderConfiguration autoFileUploaderConfiguration) {
 
 		// Removing the scheduler
-		removeScheduler();
+		removeScheduler(autoFileUploaderConfiguration);
 	}
 
 	/**
@@ -124,7 +120,7 @@ public class AutoFileUploader implements Runnable {
 	/**
 	 * This method configures the scheduler and adds it.
 	 */
-	private void addScheduler() {
+	private void addScheduler(AutoFileUploaderConfiguration autoFileUploaderConfiguration) {
 
 		try {
 
@@ -132,7 +128,7 @@ public class AutoFileUploader implements Runnable {
 			ScheduleOptions scheduleOptions = scheduler.EXPR(autoFileUploaderConfiguration.cronExpression());
 
 			// Setting name of the scheduler
-			scheduleOptions.name(schedulerId);
+			scheduleOptions.name(autoFileUploaderConfiguration.schedulerName());
 
 			// Set concurrent run flag
 			scheduleOptions.canRunConcurrently(false);
@@ -142,18 +138,19 @@ public class AutoFileUploader implements Runnable {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
+			removeScheduler(autoFileUploaderConfiguration);
 		}
 	}
 
 	/**
 	 * Method to remove scheduler
 	 */
-	private void removeScheduler() {
+	private void removeScheduler(AutoFileUploaderConfiguration autoFileUploaderConfiguration) {
 
 		log.info("Removing scheduler...");
 
 		// Unscheduling
-		scheduler.unschedule(schedulerId);
+		scheduler.unschedule(autoFileUploaderConfiguration.schedulerName());
 	}
 
 	/**
@@ -185,9 +182,6 @@ public class AutoFileUploader implements Runnable {
 			String fileName = null;
 
 			log.info("Watch Service registered for directory: " + path.getFileName());
-
-			// Getting the resource resolver
-			ResourceResolver resourceResolver = getResourceResolver();
 
 			while (true) {
 
@@ -294,8 +288,6 @@ public class AutoFileUploader implements Runnable {
 	 * @return {@link ResourceResolver}
 	 */
 	private final ResourceResolver getResourceResolver() {
-
-		ResourceResolver resourceResolver = null;
 
 		try {
 
